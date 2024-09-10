@@ -1,0 +1,109 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag to build'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+            path: own
+
+      - name: Checkout Zed
+        shell: pwsh
+        run: |
+            git clone https://github.com/zed-industries/zed.git zed
+            cd zed
+            git checkout v${{ github.event.inputs.ref }}
+
+      - name: Extract toolchain channel
+        id: extract_toolchain
+        working-directory: ./zed
+        shell: bash
+        run: |
+            TOOLCHAIN_CHANNEL=$(grep 'channel' rust-toolchain.toml | cut -d '"' -f 2)
+            echo "Toolchain channel: $TOOLCHAIN_CHANNEL"
+            echo "TOOLCHAIN_CHANNEL=$TOOLCHAIN_CHANNEL" >> $GITHUB_OUTPUT
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+            toolchain: ${{ steps.extract_toolchain.outputs.TOOLCHAIN_CHANNEL }}
+            target: "wasm32-wasip1"
+            components: "rustfmt, clippy"
+
+      - name: Show Rust toolchain info
+        run: |
+            rustc --version
+            rustup show
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+        with:
+            msbuild-architecture: x64
+
+      - name: Install Windows 10 SDK
+        uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
+        with:
+            sdk-version: 22000
+
+      - name: Build project
+        working-directory: ./zed
+        shell: pwsh
+        # zed may be set to run the exe after the build, this
+        # won't work in an headless environment. The build at this
+        # point is likely to have completed successfully.
+        continue-on-error: true
+        run: |
+            cargo run --release
+
+      - name: Show build artifacts
+        working-directory: ./zed
+        shell: bash
+        run: |
+            ls -la target/release
+
+      - name: Check build artifacts
+        working-directory: ./zed
+        shell: bash
+        run: |
+            if [ ! -f ./target/release/zed.exe ]; then
+                echo "zed.exe not found. Build likely to have failed."
+                exit 1
+            fi
+
+      - name: Calculate SHA256 checksum
+        working-directory: ./zed/target/release
+        shell: bash
+        run: |
+            sha256sum zed.exe > zed.exe.sha256
+
+      - name: Create release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./zed/target/release/zed.exe
+            ./zed/target/release/zed.exe.sha256
+          name: v${{ github.event.inputs.ref }}
+          tag_name: v${{ github.event.inputs.ref }}
+          body: |
+            Release notes for version `${{ github.event.inputs.ref }}` are available here: https://zed.dev/releases/stable/${{ github.event.inputs.ref }}
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+          # Note: drafts and prereleases cannot be set as latest.
+          make_latest: true
+          fail_on_unmatched_files: true
+          # no need to specify GITHUB_TOKEN here, it is automatically provided by GitHub Actions
+          # https://github.com/softprops/action-gh-release#-customizing
+          # https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication

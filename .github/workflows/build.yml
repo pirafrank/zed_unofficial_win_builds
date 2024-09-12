@@ -100,7 +100,7 @@ jobs:
             Release notes for version `${{ github.event.inputs.ref }}` are available here: https://zed.dev/releases/stable/${{ github.event.inputs.ref }}
           generate_release_notes: false
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.event.inputs.ref, 'pre') }}
           # Note: drafts and prereleases cannot be set as latest.
           make_latest: true
           fail_on_unmatched_files: true

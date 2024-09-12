@@ -1,18 +1,55 @@
 name: Build
+run-name: Build ${{ github.event.inputs.ref }}
 
 on:
   workflow_dispatch:
     inputs:
       ref:
         description: 'Tag to build'
-        required: true
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
 jobs:
+  checks:
+    name: "Run checks"
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.check_input.outputs.ref }}
+      build_flag: ${{ steps.version_check.outputs.build_flag }}
+    steps:
+      - name: Check input
+        id: check_input
+        run: |
+          if [[ -z "${{ github.event.inputs.ref }}" ]]; then
+            echo "No input provided, fetching latest Zed published version"
+            latest_zed="$(curl -sL https://api.github.com/repos/zed-industries/zed/releases | jq -r '.[0].tag_name')"
+            echo "ref=${latest_zed}" >> $GITHUB_OUTPUT
+          else
+            echo "ref=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+          fi
+      - name: Version check
+        id: version_check
+        shell: bash
+        run: |
+          latest_zed='${{ steps.check_input.outputs.ref }}'
+          latest_build="$(curl -sL https://api.github.com/repos/pirafrank/zed_unofficial_win_builds/releases | jq -r '.[0].tag_name')"
+
+          if [[ "${latest_zed}" == "${latest_build}" ]]; then
+            echo "Update? Nope."
+            echo "build_flag=false" >> $GITHUB_OUTPUT
+          else
+            echo "Update? Yes!"
+            echo "build_flag=true" >> $GITHUB_OUTPUT
+          fi
+
   build:
+    name: "Build Zed"
     runs-on: windows-latest
+    needs: [checks]
+    if: ${{ needs.checks.outputs.build_flag == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,7 +61,7 @@ jobs:
         run: |
             git clone https://github.com/zed-industries/zed.git zed
             cd zed
-            git checkout v${{ github.event.inputs.ref }}
+            git checkout ${{ needs.checks.outputs.ref }}
 
       - name: Extract toolchain channel
         id: extract_toolchain
@@ -88,19 +125,43 @@ jobs:
         run: |
             sha256sum zed.exe > zed.exe.sha256
 
+      - name: Create URL for release notes
+        id: rel_notes
+        shell: bash
+        run: |
+            # version in URL has no 'v' prefix, stripping
+            version="${{ needs.checks.outputs.ref }}"
+            if [[ "${version}" == v* ]]; then
+              version="${version:1}"
+            fi
+            echo "Version for release notes: ${{ needs.checks.outputs.ref }}"
+            echo "version=${{ needs.checks.outputs.ref }}" >> $GITHUB_OUTPUT
+
+            # if version contains a hyphen, it is a pre-release
+            # pre-release versions have their own URL path on zed.dev
+            if [[ "${version}" == *-* ]]; then
+                # remove the hyphen and anything after it
+                version="${version%%-*}"
+                url="https://zed.dev/releases/preview/${version}"
+            else
+                url="https://zed.dev/releases/stable/${version}"
+            fi
+            echo "Relese Notes URL: ${url}"
+            echo url=${url}>> $GITHUB_OUTPUT
+
       - name: Create release and upload assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ./zed/target/release/zed.exe
             ./zed/target/release/zed.exe.sha256
-          name: v${{ github.event.inputs.ref }}
-          tag_name: v${{ github.event.inputs.ref }}
+          name: ${{ needs.checks.outputs.ref }}
+          tag_name: ${{ needs.checks.outputs.ref }}
           body: |
-            Release notes for version `${{ github.event.inputs.ref }}` are available here: https://zed.dev/releases/stable/${{ github.event.inputs.ref }}
+            Release notes for `${{ needs.checks.outputs.ref }}` are available here: ${{ steps.rel_notes.outputs.url }}
           generate_release_notes: false
           draft: false
-          prerelease: ${{ contains(github.event.inputs.ref, 'pre') }}
+          prerelease: ${{ contains(needs.checks.outputs.ref, 'pre') || contains(needs.checks.outputs.ref, '-') }}
           # Note: drafts and prereleases cannot be set as latest.
           make_latest: true
           fail_on_unmatched_files: true

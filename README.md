@@ -2,7 +2,9 @@
 
 [![Build](https://github.com/pirafrank/zed_unofficial_win_builds/actions/workflows/build.yml/badge.svg)](https://github.com/pirafrank/zed_unofficial_win_builds/actions/workflows/build.yml)
 
-This repository contains unofficial builds of the Zed editor for Windows.
+This repository contains unofficial builds of the Zed editor for Windows x64.
+
+Not affiliated with Zed Industries.
 
 ## What is Zed?
 
@@ -34,3 +36,7 @@ Zed writes config here:
 ```txt
 %APPDATA%\Zed
 ```
+
+## Discord
+
+Official Discord by Zed Industries [here](https://discord.gg/8GubhShZ3a), as per [this discussion](https://www.reddit.com/r/ZedEditor/comments/1e3soql/zed_in_wsl/) on the official repository.

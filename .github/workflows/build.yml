@@ -2,6 +2,8 @@ name: Build
 run-name: Build ${{ github.event.inputs.ref }}
 
 on:
+  schedule:
+    - cron: '0 16 * * *'
   workflow_dispatch:
     inputs:
       ref:

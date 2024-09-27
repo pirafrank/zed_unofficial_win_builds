@@ -1,0 +1,124 @@
+name: CI
+run-name: CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag to build'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  checks:
+    name: "Run checks"
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.check_input.outputs.ref }}
+      build_flag: ${{ steps.version_check.outputs.build_flag }}
+    steps:
+      - name: Check input
+        id: check_input
+        run: |
+          if [[ -z "${{ github.event.inputs.ref }}" ]]; then
+            echo "No input provided, fetching latest Zed published version"
+            latest_zed="$(curl -sL https://api.github.com/repos/zed-industries/zed/releases | jq -r '.[0].tag_name')"
+            echo "ref=${latest_zed}" >> $GITHUB_OUTPUT
+          else
+            echo "ref=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+          fi
+      - name: Version check
+        id: version_check
+        shell: bash
+        run: |
+            echo "Update? Yes!"
+            echo "build_flag=true" >> $GITHUB_OUTPUT
+
+  build:
+    name: "Build Zed"
+    runs-on: windows-latest
+    needs: [checks]
+    if: ${{ needs.checks.outputs.build_flag == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+            path: own
+
+      - name: Checkout Zed
+        uses: actions/checkout@v4
+        with:
+            repository: zed-industries/zed
+            ref: ${{ needs.checks.outputs.ref }}
+            path: zed
+
+      - name: Extract toolchain channel
+        id: extract_toolchain
+        working-directory: ${{ github.workspace }}\zed
+        shell: bash
+        run: |
+            TOOLCHAIN_CHANNEL=$(grep 'channel' rust-toolchain.toml | cut -d '"' -f 2)
+            echo "Toolchain channel: $TOOLCHAIN_CHANNEL"
+            echo "TOOLCHAIN_CHANNEL=$TOOLCHAIN_CHANNEL" >> $GITHUB_OUTPUT
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+            toolchain: ${{ steps.extract_toolchain.outputs.TOOLCHAIN_CHANNEL }}
+            target: "wasm32-wasip1"
+            components: "rustfmt, clippy"
+
+      - name: Show Rust toolchain info
+        run: |
+            rustc --version
+            rustup show
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+        with:
+            msbuild-architecture: x64
+
+      - name: Install Windows 10 SDK
+        uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
+        with:
+            sdk-version: 22000
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ github.workspace }}\zed\crates
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-
+
+      - name: Build project
+        working-directory: ${{ github.workspace }}\zed
+        shell: pwsh
+        # zed may be set to run the exe after the build, this
+        # won't work in an headless environment. The build at this
+        # point is likely to have completed successfully.
+        continue-on-error: true
+        run: |
+            cargo run --release
+
+      - name: Show build artifacts
+        working-directory: ${{ github.workspace }}\zed
+        shell: bash
+        run: |
+            ls -la target/release
+
+      - name: Check build artifacts
+        working-directory: ${{ github.workspace }}\zed
+        shell: bash
+        run: |
+            if [ ! -f ./target/release/zed.exe ]; then
+                echo "zed.exe not found. Build likely to have failed."
+                exit 1
+            fi

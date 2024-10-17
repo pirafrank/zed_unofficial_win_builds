@@ -156,6 +156,7 @@ jobs:
         with:
           files: |
             ./zed/target/release/zed.exe
+            ./zed/target/release/zed.pdb
             ./zed/target/release/zed.exe.sha256
           name: ${{ needs.checks.outputs.ref }}
           tag_name: ${{ needs.checks.outputs.ref }}

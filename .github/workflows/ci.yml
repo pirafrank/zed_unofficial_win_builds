@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ref: ${{ steps.check_input.outputs.ref }}
-      build_flag: ${{ steps.version_check.outputs.build_flag }}
     steps:
       - name: Check input
         id: check_input
@@ -30,18 +29,11 @@ jobs:
           else
             echo "ref=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
           fi
-      - name: Version check
-        id: version_check
-        shell: bash
-        run: |
-            echo "Update? Yes!"
-            echo "build_flag=true" >> $GITHUB_OUTPUT
 
   build:
     name: "Build Zed"
     runs-on: windows-latest
     needs: [checks]
-    if: ${{ needs.checks.outputs.build_flag == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,18 +78,6 @@ jobs:
         with:
             sdk-version: 22000
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ${{ github.workspace }}\zed\crates
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ runner.os }}-cargo-
-
       - name: Build project
         working-directory: ${{ github.workspace }}\zed
         shell: pwsh
@@ -109,13 +89,13 @@ jobs:
             cargo run --release
 
       - name: Show build artifacts
-        working-directory: ${{ github.workspace }}\zed
+        working-directory: ${{ github.workspace }}/zed
         shell: bash
         run: |
             ls -la target/release
 
       - name: Check build artifacts
-        working-directory: ${{ github.workspace }}\zed
+        working-directory: ${{ github.workspace }}/zed
         shell: bash
         run: |
             if [ ! -f ./target/release/zed.exe ]; then

@@ -65,11 +65,19 @@ jobs:
             cd zed
             git checkout ${{ needs.checks.outputs.ref }}
 
+      - name: Check LongPathsEnabled first
+        run: |
+          (Get-ItemProperty "HKLM:System\CurrentControlSet\Control\FileSystem").LongPathsEnabled
+
       - name: Enable long paths in Windows
         shell: powershell
         run: |
-          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
-          -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+          git config --global core.longpaths true
+
+      - name: Check LongPathsEnabled after
+        run: |
+          (Get-ItemProperty "HKLM:System\CurrentControlSet\Control\FileSystem").LongPathsEnabled
 
       - name: Extract toolchain channel
         id: extract_toolchain

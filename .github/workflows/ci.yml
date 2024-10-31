@@ -116,6 +116,21 @@ jobs:
                 echo "zed.exe not found. Build likely to have failed."
                 exit 1
             fi
+            
+      - name: Compress build artifacts
+        working-directory: ${{ github.workspace }}\zed\target\release
+        shell: pwsh
+        run: |
+          Compress-Archive -Path zed.exe -Destination zed.zip
+          Compress-Archive -Path zed.pdb -Destination zed.pdb.zip
+
+      - name: Calculate SHA256 checksum
+        working-directory: ${{ github.workspace }}/zed/target/release
+        shell: bash
+        run: |
+            sha256sum zed.exe > zed.exe.sha256
+            sha256sum zed.zip > zed.zip.sha256
+            sha256sum zed.pdb.zip > zed.pdb.zip.sha256
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -123,9 +138,11 @@ jobs:
         with:
           name: zed
           path: |
-            ./zed/target/release/zed.exe
-            ./zed/target/release/zed.pdb
+            ./zed/target/release/zed.zip
             ./zed/target/release/zed.exe.sha256
+            ./zed/target/release/zed.zip.sha256
+            ./zed/target/release/zed.pdb.zip
+            ./zed/target/release/zed.pdb.zip.sha256
           if-no-files-found: error
 
       - name: Output artifact ID

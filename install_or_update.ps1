@@ -23,6 +23,20 @@ function Get-Artifact {
   Invoke-WebRequest -Uri $repoUrl -OutFile $tempFile
 }
 
+function Create-Shortcut {
+  # Test target dir
+  if (-not (Test-Path -Path $targetShortcutDir) -or -not (Test-Path -Path $targetShortcutFile)) {
+    New-Item -ItemType Directory -Path $targetShortcutDir -Force
+  }
+
+  # Creeate a shortcut to Zed
+  $WshShell = New-Object -comObject WScript.Shell
+  $Shortcut = $WshShell.CreateShortcut("$targetShortcutDir\Zed.lnk")
+  $Shortcut.TargetPath = "$env:LocalAppData\Programs\Zed\zed.exe"
+  $Shortcut.Save()
+  Write-Output "Shortcut created."
+}
+
 ### SCRIPT ###
 
 # Check if zed.exe process is running, if yes, prompt the user about it and exit
@@ -40,15 +54,15 @@ if (-not (Test-Path -Path $targetDir)) {
 }
 
 # Download the latest artifact and its checksum
-$repoUrl = $repoUrlBasePath + "zed.exe"
-Get-Artifact -fileName "zed.exe" -repoUrl $repoUrl
+$repoUrl = $repoUrlBasePath + "zed.zip"
+Get-Artifact -fileName "zed.zip" -repoUrl $repoUrl
 
-$repoUrl = $repoUrlBasePath + "zed.exe.sha256"
-Get-Artifact -fileName "zed.exe.sha256" -repoUrl $repoUrl
+$repoUrl = $repoUrlBasePath + "zed.zip.sha256"
+Get-Artifact -fileName "zed.zip.sha256" -repoUrl $repoUrl
 
 # Verify the downloaded file against the SHA256 checksum
-$downloadedFile = Join-Path -Path $tempDir -ChildPath "zed.exe"
-$checksumFile = Join-Path -Path $tempDir -ChildPath "zed.exe.sha256"
+$downloadedFile = Join-Path -Path $tempDir -ChildPath "zed.zip"
+$checksumFile = Join-Path -Path $tempDir -ChildPath "zed.zip.sha256"
 
 # Read the expected checksum
 $expectedChecksum = (Get-Content -Path $checksumFile).Split(" ")[0]
@@ -65,23 +79,19 @@ if ($expectedChecksum.ToUpper() -eq $actualChecksum.ToUpper()) {
 }
 
 # Check if the download was successful
-$tempFile = Join-Path -Path $tempDir -ChildPath "zed.exe"
+$tempFile = Join-Path -Path $tempDir -ChildPath "zed.zip"
+$targetFile = Join-Path -Path $targetDir -ChildPath "zed.exe"
 if (Test-Path -Path $tempFile) {
-  # Move the file to the target directory
-  Move-Item -Path $tempFile -Destination $targetDir -Force
-  Write-Output "Download and move to install directory successful."
+  # Extract the downloaded zip file
+  Expand-Archive -Path $tempFile -DestinationPath $targetDir -Force
+  if (Test-Path -Path $targetFile) {
+    Write-Output "Extracted to install directory successfully."
+    Create-Shortcut
+    Write-Output "Installation complete."
+  } else {
+    Write-Error "Extraction failed."
+  }
 }
 else {
-  Write-Error "Download failed."
+  Write-Error "Download failed. Installation aborted."
 }
-
-# Test target dir
-if (-not (Test-Path -Path $targetShortcutDir) -or -not (Test-Path -Path $targetShortcutFile)) {
-  New-Item -ItemType Directory -Path $targetShortcutDir -Force
-}
-
-# Creeate a shortcut to Zed
-$WshShell = New-Object -comObject WScript.Shell
-$Shortcut = $WshShell.CreateShortcut("$targetShortcutDir\Zed.lnk")
-$Shortcut.TargetPath = "$env:LocalAppData\Programs\Zed\zed.exe"
-$Shortcut.Save()

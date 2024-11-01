@@ -52,6 +52,9 @@ jobs:
     runs-on: windows-latest
     needs: [checks]
     if: ${{ needs.checks.outputs.build_flag == 'true' }}
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
+      zed_zip_sha256: ${{ steps.checksum.outputs.zed_zip_sha256 }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -69,7 +72,7 @@ jobs:
         run: |
           (Get-ItemProperty "HKLM:System\CurrentControlSet\Control\FileSystem").LongPathsEnabled
 
-      - name: Enable long paths in Windows
+      - name: Enable long paths in Windows and in Git
         shell: powershell
         run: |
           New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
@@ -143,25 +146,32 @@ jobs:
           Compress-Archive -Path zed.pdb -Destination zed.pdb.zip
 
       - name: Calculate SHA256 checksum
+        id: checksum
         working-directory: ./zed/target/release
         shell: bash
         run: |
             sha256sum zed.exe > zed.exe.sha256
             sha256sum zed.zip > zed.zip.sha256
             sha256sum zed.pdb.zip > zed.pdb.zip.sha256
+            echo "zed_zip_sha256=$(cat zed.zip.sha256 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+
+      - name: Extract clean version
+        id: extract_version
+        shell: bash
+        run: |
+            # version in release notes URL and in scoop bucket has no 'v' prefix, stripping
+            version="${{ needs.checks.outputs.ref }}"
+            if [[ "${version}" == v* ]]; then
+              version="${version:1}"
+            fi
+            echo "Extracted version: ${version}"
+            echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Create URL for release notes
         id: rel_notes
         shell: bash
         run: |
-            # version in URL has no 'v' prefix, stripping
-            version="${{ needs.checks.outputs.ref }}"
-            if [[ "${version}" == v* ]]; then
-              version="${version:1}"
-            fi
-            echo "Version for release notes: ${{ needs.checks.outputs.ref }}"
-            echo "version=${{ needs.checks.outputs.ref }}" >> $GITHUB_OUTPUT
-
+            version="${{ steps.extract_version.outputs.version }}"
             # if version contains a hyphen, it is a pre-release
             # pre-release versions have their own URL path on zed.dev
             if [[ "${version}" == *-* ]]; then
@@ -196,3 +206,30 @@ jobs:
           # no need to specify GITHUB_TOKEN here, it is automatically provided by GitHub Actions
           # https://github.com/softprops/action-gh-release#-customizing
           # https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication
+
+  scoop:
+    name: "Update scoop bucket"
+    runs-on: ubuntu-latest
+    needs: [checks, build]
+    # only commit to update the scoop bucket if built successfully and ref is not a pre-release
+    if: ${{ needs.build.result == 'success' && !contains(needs.checks.outputs.ref, 'pre') && !contains(needs.checks.outputs.ref, '-') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Update scoop bucket
+        shell: bash
+        run: |
+            rm -f bucket/zed.json
+            cp -a bucket/zed.template.json bucket/zed.json
+            sed -i "s,VERSION_PLACEHOLDER,${{ needs.build.outputs.version }},g" bucket/zed.json
+            sed -i "s,SHA256_PLACEHOLDER,${{ needs.build.outputs.zed_zip_sha256 }},g" bucket/zed.json
+
+      # make a signed commit with changed to zed.json file
+      - name: Commit scoop bucket update
+        id: commit_changes
+        uses: pirafrank/github-commit-sign@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: "commit --owner=${{ github.repository_owner }} --repo=${{ github.event.repository.name }} --branch=${{ github.ref_name }} --commitMessage='scoop bucket update for ${{ needs.checks.outputs.ref }}' --changed bucket/zed.json"

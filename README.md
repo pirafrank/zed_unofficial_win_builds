@@ -31,7 +31,7 @@ scoop bucket add zed-unofficial https://github.com/pirafrank/zed_unofficial_win_
 scoop install zed
 ```
 
-> [!INFO]
+> [!NOTE]
 > Use command above to install versions `0.159.6` and newer. For earlier versions use `scoop install zed-[VERSION]`.
 > A list of old versions is available in the [bucket/versions](https://github.com/pirafrank/zed_unofficial_win_builds/tree/main/bucket/versions) dir.
 

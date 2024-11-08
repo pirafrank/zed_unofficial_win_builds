@@ -3,7 +3,10 @@ run-name: Build ${{ github.event.inputs.ref }}
 
 on:
   schedule:
-    - cron: '0 16 * * *'
+    - cron: '0 18 * * *'
+    - cron: '10 18 * * *'
+    - cron: '0 6 * * *'
+    - cron: '10 6 * * *'
   workflow_dispatch:
     inputs:
       ref:
@@ -19,34 +22,57 @@ jobs:
     name: "Run checks"
     runs-on: ubuntu-latest
     outputs:
-      ref: ${{ steps.check_input.outputs.ref }}
+      ref: ${{ steps.version_check.outputs.ref }}
       build_flag: ${{ steps.version_check.outputs.build_flag }}
     steps:
-      - name: Check input
-        id: check_input
-        run: |
-          if [[ -z "${{ github.event.inputs.ref }}" ]]; then
-            echo "No input provided, fetching latest Zed published version"
-            latest_zed="$(curl -sL https://api.github.com/repos/zed-industries/zed/releases | jq -r '.[0].tag_name')"
-            echo "ref=${latest_zed}" >> $GITHUB_OUTPUT
-          else
-            echo "ref=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
-          fi
       - name: Version check
         id: version_check
-        shell: bash
         run: |
-          latest_zed='${{ steps.check_input.outputs.ref }}'
-          latest_build="$(curl -sL https://api.github.com/repos/pirafrank/zed_unofficial_win_builds/releases | jq -r '.[0].tag_name')"
+          input_ref="${{ github.event.inputs.ref }}"
+          zed_url="https://api.github.com/repos/zed-industries/zed/releases"
+          this_url="https://api.github.com/repos/pirafrank/zed_unofficial_win_builds/releases"
 
-          if [[ "${latest_zed}" == "${latest_build}" ]]; then
-            echo "Update? Nope."
-            echo "build_flag=false" >> $GITHUB_OUTPUT
-          else
-            echo "Update? Yes!"
+          echo "Fetching latest non-draft releases from Zed repo..."
+          latest_stable_zed="$(curl -sL ${zed_url} | jq -r '[.[] | select(.prerelease == false and .draft == false)][0].tag_name')"
+          latest_pre_zed="$(curl -sL ${zed_url} | jq -r '[.[] | select(.prerelease == true and .draft == false)][0].tag_name')"
+          echo "Latest stable version: ${latest_stable_zed}"
+          echo "Latest pre-release: ${latest_pre_zed}"
+          
+          echo "Fetching published versions for current repo..."
+          curl -sL ${this_url} | jq -r '.[].tag_name' > published_versions
+
+          # if input is not empty and not in published versions, use it
+          if [[ ! -z "${input_ref}" ]] ; then
+            echo "Input version provided: ${input_ref}"
+            if ! grep -Fxq "${input_ref}" published_versions ; then
+              echo "Version provided in input has not been published. Using ${input_ref}."
+              echo "ref=${input_ref}" >> $GITHUB_OUTPUT
+              echo "build_flag=true" >> $GITHUB_OUTPUT
+            else
+              echo "Version provided in input has already been published. Nothing to build."
+              echo "build_flag=false" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
+          
+          echo "No input provided, checking the latest stable version."
+          if ! grep -Fxq "${latest_stable_zed}" published_versions ; then
+            echo "${latest_stable_zed} not published. Using it."
+            echo "ref=${latest_stable_zed}" >> $GITHUB_OUTPUT
             echo "build_flag=true" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
+          echo "Latest stable version has already been published. Checking latest pre-release."
+          if ! grep -Fxq "${latest_pre_zed}" published_versions ; then
+            echo "${latest_pre_zed} not published. Using it."
+            echo "ref=${latest_pre_zed}" >> $GITHUB_OUTPUT
+            echo "build_flag=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Nothing to build. All versions candidate to be built are already published."
+          echo "build_flag=false" >> $GITHUB_OUTPUT
   build:
     name: "Build Zed"
     runs-on: windows-latest

@@ -12,7 +12,7 @@ Not affiliated with Zed Industries.
 
 ## Why?
 
-The official Zed editor is only available for macOS and Linux. This repository fills the gap until official builds for Windows will be available.
+The official Zed editor is only available for macOS and Linux. This repository fills the gap until official builds for Windows are available.
 
 ## How it works?
 

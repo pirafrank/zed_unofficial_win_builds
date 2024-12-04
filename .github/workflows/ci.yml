@@ -15,7 +15,7 @@ permissions:
 jobs:
   checks:
     name: "Run checks"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       ref: ${{ steps.check_input.outputs.ref }}
     steps:

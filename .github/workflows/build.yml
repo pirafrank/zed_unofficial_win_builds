@@ -20,7 +20,7 @@ permissions:
 jobs:
   checks:
     name: "Run checks"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       ref: ${{ steps.version_check.outputs.ref }}
       build_flag: ${{ steps.version_check.outputs.build_flag }}
@@ -235,7 +235,7 @@ jobs:
 
   scoop:
     name: "Update scoop bucket"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [checks, build]
     # only commit to update the scoop bucket if built successfully and ref is not a pre-release
     if: ${{ needs.build.result == 'success' && !contains(needs.checks.outputs.ref, 'pre') && !contains(needs.checks.outputs.ref, '-') }}

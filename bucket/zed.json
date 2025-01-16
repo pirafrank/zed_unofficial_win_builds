@@ -9,7 +9,7 @@
       "hash": "7b951b5732b1cda3aed6558d8e6c475b6c8ba9e88439e539cc00cdedfda4601c"
     }
   },
-  "bin": ["zed.exe", "zed"],
+  "bin": "zed.exe",
   "shortcuts": [["zed.exe", "Zed"]],
   "checkver": {
     "github": "https://github.com/pirafrank/zed_unofficial_win_builds"

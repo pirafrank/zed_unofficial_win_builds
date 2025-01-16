@@ -9,7 +9,7 @@
       "hash": "SHA256_PLACEHOLDER"
     }
   },
-  "bin": ["zed.exe", "zed"],
+  "bin": "zed.exe",
   "shortcuts": [["zed.exe", "Zed"]],
   "checkver": {
     "github": "https://github.com/pirafrank/zed_unofficial_win_builds"

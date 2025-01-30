@@ -63,7 +63,7 @@ runs:
     # point is likely to have completed successfully.
     continue-on-error: true
     env:
-        RUSTFLAGS: "-C symbol-mangling-version=v0 --cfg tokio_unstable --cfg windows_slim_errors -C target-feature=+crt-static --cfg gles"
+        RUSTFLAGS: "-C symbol-mangling-version=v0 --cfg tokio_unstable --cfg windows_slim_errors -C target-feature=+crt-static"
     run: |
         cargo build --release --verbose
 

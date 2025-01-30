@@ -1,5 +1,9 @@
 name: Zed Build
 description: Perform a Zed build for Windows
+outputs:
+  zed_zip_sha256:
+    description: SHA256 checksum of the zed.zip artifact
+    value: ${{ steps.checksum.outputs.zed_zip_sha256 }}
 runs:
   using: "composite"
   steps:
@@ -92,3 +96,4 @@ runs:
         sha256sum zed.exe > zed.exe.sha256
         sha256sum zed.zip > zed.zip.sha256
         sha256sum zed.pdb.zip > zed.pdb.zip.sha256
+        echo "zed_zip_sha256=$(cat zed.zip.sha256 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT

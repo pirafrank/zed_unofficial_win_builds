@@ -80,7 +80,7 @@ jobs:
     if: ${{ needs.checks.outputs.build_flag == 'true' }}
     outputs:
       version: ${{ steps.extract_version.outputs.version }}
-      zed_zip_sha256: ${{ steps.checksum.outputs.zed_zip_sha256 }}
+      zed_zip_sha256: ${{ steps.zed-build.outputs.zed_zip_sha256 }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

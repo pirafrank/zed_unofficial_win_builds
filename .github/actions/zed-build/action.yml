@@ -61,7 +61,7 @@ runs:
     env:
         RUSTFLAGS: "-C symbol-mangling-version=v0 --cfg tokio_unstable --cfg windows_slim_errors -C target-feature=+crt-static --cfg gles"
     run: |
-        cargo run --release --verbose
+        cargo build --release --verbose
 
   - name: Show build artifacts
     working-directory: ${{ github.workspace }}/zed

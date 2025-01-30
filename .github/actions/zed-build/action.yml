@@ -90,6 +90,7 @@ runs:
       Compress-Archive -Path zed.pdb -Destination zed.pdb.zip
 
   - name: Calculate SHA256 checksum
+    id: checksum
     working-directory: ${{ github.workspace }}/zed/target/release
     shell: bash
     run: |

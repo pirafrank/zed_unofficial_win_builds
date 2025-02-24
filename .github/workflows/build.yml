@@ -84,8 +84,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-            path: own
 
       - name: Checkout Zed
         uses: actions/checkout@v4
@@ -96,7 +94,7 @@ jobs:
 
       - name: Build Zed
         id: zed-build
-        uses: ./own/.github/actions/zed-build
+        uses: ./.github/actions/zed-build
 
       - name: Extract clean version
         id: extract_version

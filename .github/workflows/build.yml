@@ -134,8 +134,6 @@ jobs:
             ./zed/target/release/zed.zip
             ./zed/target/release/zed.exe.sha256
             ./zed/target/release/zed.zip.sha256
-            ./zed/target/release/zed.pdb.zip
-            ./zed/target/release/zed.pdb.zip.sha256
           name: ${{ needs.checks.outputs.ref }}
           tag_name: ${{ needs.checks.outputs.ref }}
           body: |

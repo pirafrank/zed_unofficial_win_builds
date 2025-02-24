@@ -1,0 +1,55 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # UTC midnight
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Enable long paths in Git
+        run: |
+          git config --system core.longpaths true
+
+      - name: Checkout self
+        uses: actions/checkout@v4
+
+      - name: Checkout Zed
+        uses: actions/checkout@v4
+        with:
+          repository: zed-industries/zed
+          ref: main
+          path: zed
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+            target: "wasm32-wasip1"
+
+      - name: Show Rust toolchain info
+        run: |
+            rustc --version
+            rustup show
+
+      - name: Today
+        id: today
+        shell: bash
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Build release
+        working-directory: zed
+        run: cargo build --release
+
+      - name: Zip release
+        run: |
+          7z a -tzip zed/target/release/zed.exe.zip zed/target/release/zed.exe
+
+      - name: Archive build
+        uses: actions/upload-artifact@v4
+        with:
+          name: zed-${{ steps.today.outputs.date }}.zip
+          path: zed/target/release/zed.exe.zip

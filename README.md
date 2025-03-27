@@ -28,7 +28,7 @@ Choose one of the following options.
 
 ```powershell
 scoop bucket add zed-unofficial https://github.com/pirafrank/zed_unofficial_win_builds.git
-scoop install zed
+scoop install zed-unofficial/zed
 ```
 
 > [!NOTE]

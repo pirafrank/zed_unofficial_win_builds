@@ -150,19 +150,29 @@ jobs:
     name: "Update scoop bucket"
     runs-on: ubuntu-22.04
     needs: [checks, build]
-    # only commit to update the scoop bucket if built successfully and ref is not a pre-release
-    if: ${{ needs.build.result == 'success' && !contains(needs.checks.outputs.ref, 'pre') && !contains(needs.checks.outputs.ref, '-') }}
+    # only commit to update the scoop bucket if built successfully
+    if: ${{ needs.build.result == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
       - name: Update scoop bucket
         shell: bash
+        id: scoop_update
         run: |
-            rm -f bucket/zed.json
-            cp -a bucket/zed.template.json bucket/zed.json
-            sed -i "s,VERSION_PLACEHOLDER,${{ needs.build.outputs.version }},g" bucket/zed.json
-            sed -i "s,SHA256_PLACEHOLDER,${{ needs.build.outputs.zed_zip_sha256 }},g" bucket/zed.json
+            if [[ ${{ needs.checks.outputs.ref }} =~ 'pre' ]]; then
+                json_file="bucket/zed-preview.json"
+                template_file="bucket/zed-preview.template.json"
+            else
+                json_file="bucket/zed.json"
+                template_file="bucket/zed.template.json"
+            fi
+
+            rm -f "${json_file}"
+            cp -a "${template_file}" "${json_file}"
+            sed -i "s,VERSION_PLACEHOLDER,${{ needs.build.outputs.version }},g" "${json_file}"
+            sed -i "s,SHA256_PLACEHOLDER,${{ needs.build.outputs.zed_zip_sha256 }},g" "${json_file}"
+            echo "file=${json_file}" >> $GITHUB_OUTPUT
 
       # make a signed commit with changed to zed.json file
       - name: Commit scoop bucket update
@@ -171,4 +181,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: "commit --owner=${{ github.repository_owner }} --repo=${{ github.event.repository.name }} --branch=${{ github.ref_name }} --commitMessage='scoop bucket update for ${{ needs.checks.outputs.ref }}' --changed bucket/zed.json"
+          args: "commit --owner=${{ github.repository_owner }} --repo=${{ github.event.repository.name }} --branch=${{ github.ref_name }} --commitMessage='scoop bucket update for ${{ needs.checks.outputs.ref }}' --changed ${{ steps.scoop_update.outputs.file }}"

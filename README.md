@@ -24,7 +24,7 @@ Releases published here matches [those by Zed](https://github.com/zed-industries
 
 Choose one of the following options.
 
-### Scoop
+### Scoop (Stable)
 
 ```powershell
 scoop bucket add zed-unofficial https://github.com/pirafrank/zed_unofficial_win_builds.git
@@ -35,7 +35,18 @@ scoop install zed-unofficial/zed
 > Use command above to install versions `0.159.6` and newer. For earlier versions use `scoop install zed-[VERSION]`.
 > A list of old versions is available in the [bucket/versions](https://github.com/pirafrank/zed_unofficial_win_builds/tree/main/bucket/versions) dir.
 
-### Installation script
+### Scoop (Preview)
+
+`*-pre` versions of Zed.
+
+```powershell
+scoop bucket add zed-unofficial https://github.com/pirafrank/zed_unofficial_win_builds.git
+scoop install zed-unofficial/zed-preview
+```
+
+### Installation script (Stable)
+
+Stable-only versions of Zed.
 
 ```powershell
 Invoke-WebRequest -Uri https://github.com/pirafrank/zed_unofficial_win_builds/raw/refs/heads/main/install_or_update.ps1 -OutFile .\install_or_update.ps1

@@ -78,6 +78,17 @@ Zed writes config here:
 %APPDATA%\Zed
 ```
 
+## Related tools
+
+### Zed CLI for Windows Unofficial
+
+It is an unofficial CLI for Windows built from source and providing some basic, yet useful, functionalities.
+
+- [Repository](https://github.com/SameerJS6/zed-cli-win-unofficial)
+- [Website](https://zedcli.sameerjs.com/).
+
+Thanks [@SameerJS6](https://github.com/SameerJS6) for providing such project.
+
 ## Discord
 
 Official Discord by Zed Industries [here](https://discord.gg/8GubhShZ3a), as per [this discussion](https://www.reddit.com/r/ZedEditor/comments/1e3soql/zed_in_wsl/) on the official repository.

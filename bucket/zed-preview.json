@@ -1,12 +1,12 @@
 {
-  "version": "0.200.4-pre",
+  "version": "0.201.2-pre",
   "description": "High-performance, multiplayer code editor",
   "homepage": "https://github.com/pirafrank/zed_unofficial_win_builds",
   "license": "AGPL-3.0, Apache-2.0, GPL-3.0",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/pirafrank/zed_unofficial_win_builds/releases/download/v0.200.4-pre/zed.zip",
-      "hash": "e6c9a27e166a416955d018e7aaf791f3e6d9cb0e270913cf022157733d7026e1"
+      "url": "https://github.com/pirafrank/zed_unofficial_win_builds/releases/download/v0.201.2-pre/zed.zip",
+      "hash": "52726c242d45e8153c29a58a5edf461167e21ef20269a35c35f685409d13b648"
     }
   },
   "bin": "zed.exe",

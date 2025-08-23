@@ -1,5 +1,5 @@
 name: Build
-run-name: Build ${{ github.event.inputs.ref }}
+run-name: ${{ github.event.inputs.is_custom == 'true' && format('Custom build of {0}/{1}', github.event.inputs.repository, github.event.inputs.branch) || format('Official build of {0}', github.event.inputs.ref) }}
 
 on:
   schedule:
@@ -9,8 +9,21 @@ on:
     - cron: '0 7 * * *'
   workflow_dispatch:
     inputs:
+      is_custom:
+        description: 'Set to true for custom builds from a fork/branch'
+        required: true
+        type: boolean
+        default: false
+      repository:
+        description: 'Repository to build from (e.g., zenigor/zed). Only for custom builds.'
+        required: false
+        default: 'zed-industries/zed'
+      branch:
+        description: 'Branch to build from (e.g., feat/hover-translation). Only for custom builds.'
+        required: false
+        default: 'main'
       ref:
-        description: 'Tag to build'
+        description: 'Official tag to build (e.g., v0.129.0). Only for official builds.'
         required: false
         default: ''
 
@@ -23,11 +36,26 @@ jobs:
     runs-on: ubuntu-22.04
     outputs:
       ref: ${{ steps.version_check.outputs.ref }}
+      repository: ${{ steps.version_check.outputs.repository }}
+      is_custom: ${{ steps.version_check.outputs.is_custom }}
       build_flag: ${{ steps.version_check.outputs.build_flag }}
     steps:
       - name: Version check
         id: version_check
         run: |
+          if [[ "${{ github.event.inputs.is_custom }}" == "true" ]]; then
+            echo "Custom build triggered."
+            echo "Repository: ${{ github.event.inputs.repository }}"
+            echo "Branch: ${{ github.event.inputs.branch }}"
+            echo "is_custom=true" >> $GITHUB_OUTPUT
+            echo "repository=${{ github.event.inputs.repository }}" >> $GITHUB_OUTPUT
+            echo "ref=${{ github.event.inputs.branch }}" >> $GITHUB_OUTPUT
+            echo "build_flag=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "is_custom=false" >> $GITHUB_OUTPUT
+          echo "repository=zed-industries/zed" >> $GITHUB_OUTPUT
           input_ref="${{ github.event.inputs.ref }}"
           zed_url="https://api.github.com/repos/zed-industries/zed/releases"
           this_url="https://api.github.com/repos/pirafrank/zed_unofficial_win_builds/releases"
@@ -88,7 +116,7 @@ jobs:
       - name: Checkout Zed
         uses: actions/checkout@v4
         with:
-            repository: zed-industries/zed
+            repository: ${{ needs.checks.outputs.repository }}
             ref: ${{ needs.checks.outputs.ref }}
             path: zed
 
@@ -98,6 +126,7 @@ jobs:
 
       - name: Extract clean version
         id: extract_version
+        if: ${{ needs.checks.outputs.is_custom != 'true' }}
         shell: bash
         run: |
             # version in release notes URL and in scoop bucket has no 'v' prefix, stripping
@@ -110,6 +139,7 @@ jobs:
 
       - name: Create URL for release notes
         id: rel_notes
+        if: ${{ needs.checks.outputs.is_custom != 'true' }}
         shell: bash
         run: |
             version="${{ steps.extract_version.outputs.version }}"
@@ -132,15 +162,13 @@ jobs:
             ./zed/target/release/zed.zip
             ./zed/target/release/zed.exe.sha256
             ./zed/target/release/zed.zip.sha256
-          name: ${{ needs.checks.outputs.ref }}
-          tag_name: ${{ needs.checks.outputs.ref }}
-          body: |
-            Release notes for `${{ needs.checks.outputs.ref }}` are available here: ${{ steps.rel_notes.outputs.url }}
+          name: ${{ needs.checks.outputs.is_custom == 'true' && format('Build from branch {0}', needs.checks.outputs.ref) || needs.checks.outputs.ref }}
+          tag_name: ${{ needs.checks.outputs.is_custom == 'true' && format('build-branch-{0}', needs.checks.outputs.ref) || needs.checks.outputs.ref }}
+          body: ${{ needs.checks.outputs.is_custom == 'true' && format('Custom build from repository `{0}` and branch `{1}`.', needs.checks.outputs.repository, needs.checks.outputs.ref) || format('Release notes for `{0}` are available here: {1}', needs.checks.outputs.ref, steps.rel_notes.outputs.url) }}
           generate_release_notes: false
-          draft: false
-          prerelease: ${{ contains(needs.checks.outputs.ref, 'pre') || contains(needs.checks.outputs.ref, '-') }}
-          # Note: drafts and prereleases cannot be set as latest.
-          make_latest: true
+          draft: ${{ needs.checks.outputs.is_custom == 'true' }}
+          prerelease: ${{ needs.checks.outputs.is_custom == 'true' || contains(needs.checks.outputs.ref, 'pre') || contains(needs.checks.outputs.ref, '-') }}
+          make_latest: ${{ needs.checks.outputs.is_custom != 'true' }}
           fail_on_unmatched_files: true
           # no need to specify GITHUB_TOKEN here, it is automatically provided by GitHub Actions
           # https://github.com/softprops/action-gh-release#-customizing
@@ -151,7 +179,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [checks, build]
     # only commit to update the scoop bucket if built successfully
-    if: ${{ needs.build.result == 'success' }}
+    if: ${{ needs.build.result == 'success' && needs.checks.outputs.is_custom != 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

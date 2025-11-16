@@ -1,5 +1,17 @@
 # Zed editor (Unofficial Windows builds)
 
+---
+
+## ⚠️ Update: Nov 2025
+
+Zed is now officially available for Windows, both as [stable](https://zed.dev/download) and [nightly](https://github.com/zed-industries/zed/releases) builds.
+
+This repository will remain available as archived. No more builds will be produced.
+
+Thank you to all those who followed this repo, I hope it has been useful. Original README follows.
+
+---
+
 [![Build](https://github.com/pirafrank/zed_unofficial_win_builds/actions/workflows/build.yml/badge.svg)](https://github.com/pirafrank/zed_unofficial_win_builds/actions/workflows/build.yml)
 
 This repository contains unofficial builds of the Zed editor for Windows x64.
